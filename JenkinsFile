@@ -1,0 +1,47 @@
+pipeline {
+    agent any
+    tools {
+        maven 'Maven3'
+        jdk 'JDK8'
+    }
+    environment {
+        TEST_ENV = 'test'
+    }
+    stages {
+        stage('拉取代码') {
+            steps {
+                echo '=== 拉取代码 ==='
+                checkout scm
+            }
+        }
+        stage('执行API测试') {
+            steps {
+                echo '=== 执行测试 ==='
+                sh 'mvn clean test -Denv=${TEST_ENV}'
+            }
+        }
+        stage('生成Allure报告') {
+            steps {
+                allure results: [[path: 'target/allure-results']]
+            }
+        }
+    }
+    post {
+        always {
+            script {
+                // 读取测试汇总
+                def summary = readJSON(file: "target/test-result/test-summary.json", encoding: "UTF-8")
+                // 读取HTML模板
+                def emailContent = readFile(file: "src/main/resources/template/email.html", encoding: "UTF-8")
+
+                emailext(
+                    to: "你的邮箱@公司.com",
+                    from: "jenkins-auto-test@公司.com",
+                    subject: "【API自动化测试】${summary.env}环境 ${currentBuild.currentResult} | ${env.JOB_NAME}#${env.BUILD_NUMBER}",
+                    contentType: "text/html",
+                    body: emailContent
+                )
+            }
+        }
+    }
+}
