@@ -1,0 +1,137 @@
+#!/usr/bin/env groovy
+pipeline {
+    agent { label 'cm-linux' }
+    tools {
+        maven 'Maven_3.9.6_Linux'
+        jdk 'JDK_1.17.0_Linux'
+    }
+
+    parameters {
+        booleanParam(name: 'IS_REBUILD', defaultValue: false, description: '')
+        choice(choices: ['uat', 'sit', 'prod'], name: 'runEnv', description: '')
+        string(name: 'GITHUB_BRANCH', defaultValue: 'main', trim: true)
+        string(name: 'MAIL_TO', defaultValue: 'jodie.g.x.xing@noexternalmail.hsbc.com', trim: true)
+        extendedChoice(
+                name: 'Country',
+                description: '',
+                multiSelectDelimiter: ',',
+                quoteValue: false,
+                visibleItemCount: 6,
+                type: 'PT_CHECKBOX',
+                value: 'HK,US,UK,SG,MY',
+                defaultValue: 'HK'
+        )
+        extendedChoice(
+                name: 'Module',
+                description: '',
+                multiSelectDelimiter: ',',
+                quoteValue: false,
+                visibleItemCount: 10,
+                type: 'PT_CHECKBOX',
+                value: 'FXRate,InnerAccount,Vam,Vtm,WalletService,Transaction,IPS',
+                defaultValue: 'FXRate'
+        )
+    }
+
+    environment {
+        TEST_ENV = "${params.runEnv}"
+        receive_mails = "${params.MAIL_TO}"
+        GITHUB_URL = "https://alm-github.systems.uk.hsbc/TFX/quantum-api-automation.git"
+        CREDENTIAL_ID = "github-token-from-mark"
+    }
+
+    stages {
+        stage('Ready') {
+            options { timeout(time: 5, unit: 'MINUTES') }
+            steps {
+                script {
+                    echo "send email==>" + "${params.MAIL_TO}"
+                }
+            }
+        }
+
+        stage('Checkout') {
+            options { timeout(time: 10, unit: 'MINUTES') }
+            steps {
+                retry(5) {
+                    echo "chone code from ${GITHUB_URL} ~ ${GITHUB_BRANCH}"
+                    checkout changelog: false, poll: false, scm: scmGit(
+                            branches: [[name: 'refs/heads/${GITHUB_BRANCH}']],
+                            extensions: [
+                                    cloneOption(honorRefspec: true, noTags: true, reference: "", shallow: true, depth: 1, timeout: 20),
+                                    pruneStaleBranch(),
+                            ],
+                            gitTool: 'Default',
+                            userRemoteConfigs: [[
+                                                        credentialsId: "${CREDENTIAL_ID}",
+                                                        name: 'origin',
+                                                        refspec: '+refs/heads/${GITHUB_BRANCH}:refs/remotes/origin/${GITHUB_BRANCH}',
+                                                        url: "${GITHUB_URL}"
+                                                ]]
+                    )
+                }
+                sh 'git status'
+                sh 'chmod -R 755 $WORKSPACE/src/main/resources/allure/allure-2.33.0/'
+            }
+        }
+
+        stage('execute api test') {
+            steps {
+                echo '==== execute testing ===='
+                configFileProvider(
+                        [configFile(fileId: '46a8f376-dbae-4b8f-911b-201f098f8c64', variable: 'MAVEN_SETTINGS')]) {
+                    sh """
+                        mvn -s $MAVEN_SETTINGS clean test -Dspring.profiles.active=${TEST_ENV} -Dtfx.countries=${params.Country} -Dtfx.modules=${params.Module}
+                    """
+                }
+                sh 'ls -la target/allure-report'
+                echo "${env.BUILD_URL}"
+                echo "${env.JOB_NAME}"
+                echo "${env.BUILD_NUMBER}"
+            }
+        }
+    }
+
+    post {
+        always {
+            publishHTML([
+                    allowMissing: false,
+                    alwaysLinkToLastBuild: true,
+                    keepAll: true,
+                    reportDir: "${WORKSPACE}/target/allure-report",
+                    reportFiles: 'index.html',
+                    reportName: 'AllureReport',
+                    reportTitles: 'AllureReport',
+                    useWrapperFileDirectly: true
+            ])
+
+            script {
+                // read summary data
+                def jsonFile = readJSON(file: "target/test-result/test-summary.json", encoding: "UTF-8")
+                // read html template
+                def htmlTemplate = readFile(file: "src/main/resources/template/email-report.html", encoding: "UTF-8")
+
+                def emailBody = htmlTemplate
+                        .replace("{{modules}}", "${params.Module}")
+                        .replace("{{countries}}", "${params.Country}")
+                        .replace("{{BUILD_URL}}", env.BUILD_URL)
+                        .replace("{{currentbuild.currentResult}}", currentBuild.currentResult)
+                        .replace("{{env}}", jsonFile.env.toString())
+                        .replace("{{total}}", jsonFile.total.toString())
+                        .replace("{{passed}}", jsonFile.passed.toString())
+                        .replace("{{failed}}", jsonFile.failed.toString())
+                        .replace("{{skipped}}", jsonFile.skipped.toString())
+                        .replace("{{passRate}}", jsonFile.passRate.toString())
+                        .replace("{{currentbuild.currentResult == 'SUCCESS' ? '#28a745' : '#dc3545'}}",
+                                currentBuild.currentResult == 'SUCCESS' ? '#28a745' : '#dc3545')
+
+                emailext(
+                        to: "${params.MAIL_TO}",
+                        subject: "[Quantum API Automation Test Result]",
+                        mimeType: "text/html",
+                        body: emailBody
+                )
+            }
+        }
+    }
+}

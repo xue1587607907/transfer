@@ -1,0 +1,42 @@
+tfx:
+  # base_url: https://api-gateway.quantum.ap-east-1.dev.aws.cloud.hsbc
+  base_url: https://api-proxy.quantum.euw1.dev.aws.cloud.hsbc
+  environment: UAT
+
+papi_headers:
+  commons:
+    X-HSBC-Request-Correlation-Id: ${random.uuid}
+    X-HSBC-Session-Correlation-Id: ${random.uuid}
+    X-HSBC-Src-Device-Id: "1234"
+    X-HSBC-Locale: en_US
+    X-HSBC-Client-Id: QZxDYZoh/udzmubHlzyFDSoL8WYykB200bjF
+    X-HSBC-E2E-Trust-Token: eyJ0eXAiOiJKV1MiLCJraWQiOiJFMkFVfVFJVU1RFU0NFT9DTUJFVUfIwiYWxnIjoi
+
+  UK:
+    X-HSBC-Chnl-CountryCode: GB
+    X-HSBC-Chnl-Group-Member: HRFB
+    X-HSBC-Channel-Id: WEB
+    X-HSBC-Consumer-Id: HSBCNET
+
+  MY:
+    X-HSBC-Chnl-CountryCode: MY
+    X-HSBC-Chnl-Group-Member: HBMS
+    X-HSBC-Channel-Id: OHI
+    X-HSBC-Consumer-Id: QUANTUM_TPS_MY
+
+  US:
+    X-HSBC-Chnl-CountryCode: US
+    X-HSBC-Chnl-Group-Member: MMBI
+    X-HSBC-Channel-Id: WEB
+    X-HSBC-Consumer-Id: QUANTUM_TPS_US
+    X-HSBC-Business-Line: CMB
+
+  HK:
+    X-HSBC-Chnl-CountryCode: HK
+    X-HSBC-Chnl-Group-Member: HBAP
+    X-HSBC-Channel-Id: OHI
+    X-HSBC-Consumer-Id: QUANTUM_TPS_HK
+
+  SG:
+    X-HSBC-Chnl-CountryCode: SG
+    X-HSBC-Chnl-Group-Member: HSBC

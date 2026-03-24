@@ -1,0 +1,28 @@
+server:
+  port: 8080
+
+spring:
+  profiles:
+    active:
+      - uat
+
+tfx:
+  parallel: true
+  countries:
+    - US
+    - HK
+    - UK
+    - SG
+    - MY
+    # - CA
+  modules: # module name need to be same as the Excel sheet name. using to read data from Excel file
+    - FXRate
+    - InnerAccount
+    - Van
+    - Vtm
+    - IPS
+    - WalletService
+
+request-log:
+  # enable: true
+  enable: true

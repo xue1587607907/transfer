@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE suite SYSTEM "http://testng.org/testng-1.0.dtd">
+<suite name="test-suit" parallel="methods" thread-count="4" data-provider-thread-count="4">
+    <!--<suite name="test-suit" parallel="methods" thread-count="2" data-provider-thread-count="2">-->
+
+    <listeners>
+        <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
+        <listener class-name="com.guiji.apiautomationfinal.listeners.RetryAnalyzerListener"/>
+        <listener class-name="com.guiji.apiautomationfinal.listeners.ExtentTestNGListener"/>
+        <listener class-name="com.guiji.apiautomationfinal.listeners.TestSummaryReporter"/>
+    </listeners>
+
+    <test name="Test Name">
+        <classes>
+            <!--<class name="com.hsbc.runner.TestRunner"/>-->
+            <class name="com.guiji.apiautomationfinal.test.testcase.APITest"/>
+        </classes>
+    </test>
+</suite>
